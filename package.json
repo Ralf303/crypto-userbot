@@ -1,0 +1,25 @@
+{
+    "name": "my-awesome-bot",
+    "type": "module",
+    "version": "0.0.1",
+    "packageManager": "pnpm@9.15.3",
+    "license": "MIT",
+    "scripts": {
+        "lint": "eslint .",
+        "lint:fix": "eslint --fix .",
+        "start": "dotenv tsx ./src/main.ts",
+        "build": "tsc"
+    },
+    "dependencies": {
+        "@mtcute/crypto-node": "^0.19.0",
+        "@mtcute/dispatcher": "^0.19.1",
+        "@mtcute/node": "^0.19.2",
+        "dotenv-cli": "^8.0.0"
+    },
+    "devDependencies": {
+        "@antfu/eslint-config": "^3.12.1",
+        "@types/node": "^22.10.5",
+        "tsx": "^4.19.2",
+        "typescript": "^5.7.2"
+    }
+}
