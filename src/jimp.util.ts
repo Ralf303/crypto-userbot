@@ -8,7 +8,7 @@ export async function processImage() {
     const left = 0;
     const right = 0;
     const top = 0;
-    const bottom = 90;
+    const bottom = 80;
 
     const croppedWidth = Math.max(1, image.bitmap.width - left - right);
     const croppedHeight = Math.max(1, image.bitmap.height - top - bottom);
