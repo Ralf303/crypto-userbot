@@ -74,6 +74,7 @@ const start = async () => {
         const data = req.body;
         const price = data?.price;
         const direct = data?.direct;
+        console.log(price, direct);
 
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -84,7 +85,7 @@ const start = async () => {
         // && isWeekday && isWithinTimeFrame
         if (price && direct) {
           const file = await tg.uploadFile({ file: "./screen.png" });
-          await tg.sendMedia(-1002275172857, {
+          await tg.sendMedia(-1002301555153, {
             type: "photo",
             file: file,
             caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
