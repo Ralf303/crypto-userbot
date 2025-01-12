@@ -59,7 +59,7 @@ const start = async () => {
           timeout: 60000,
         });
 
-        await page.getByLabel("Fullscreen mode").click();
+        await page.getByRole("button", { name: "Fullscreen mode" }).click();
 
         await page.screenshot({
           path: "screen.png",
