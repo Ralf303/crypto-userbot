@@ -105,7 +105,7 @@ const start = async () => {
     });
 
     app.get("/", (req: any, res: any) => {
-      res.send("Hi it is working");
+      res.send("TEST WORKING");
     });
 
     console.log("Logged in as", user.username);
