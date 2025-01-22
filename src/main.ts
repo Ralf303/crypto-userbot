@@ -74,7 +74,6 @@ const start = async () => {
         const data = req.body;
         const price = data?.price;
         const direct = data?.direct;
-        console.log(price, direct);
 
         const now = new Date();
         const dayOfWeek = now.getDay();
@@ -91,7 +90,9 @@ const start = async () => {
             caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
           <emoji id="5870921681735781843">✅</emoji> Сигнал:
           <strong
-            >ВНИЗ</strong><emoji id="6039802767931871481">✅</emoji><br />
+            >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
+              direct === "UP" ? "5963103826075456248" : "6039802767931871481"
+            }">${direct === "UP" ? "⬆️" : "✅"}</emoji><br />
             <emoji id="5776356023820358695">✅</emoji> Цена актива: ${price}<br />
             <emoji id="5983150113483134607">✅</emoji> Сделку открываем на ${getRandomMinute()}</strong
           ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а также индикаторами технического анализа`,
