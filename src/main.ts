@@ -4,23 +4,26 @@ import cors from "cors";
 import * as env from "./env.js";
 import { chromium } from "playwright";
 import { processImage } from "./jimp.util.js";
+import { getRandomTime } from "./utils.js";
+import axios from "axios";
 
-const tg = new TelegramClient({
+export const tg = new TelegramClient({
   apiId: env.API_ID,
   apiHash: env.API_HASH,
   storage: "bot-data/session",
 });
 
-function getRandomMinute() {
-  const minutesArray = [
-    "1 минуту",
-    "2 минуты",
-    "3 минуты",
-    "4 минуты",
-    "5 минут",
-  ];
-  const randomIndex = Math.floor(Math.random() * minutesArray.length);
-  return minutesArray[randomIndex];
+function waitForTime(targetTime: any) {
+  const now: any = new Date();
+  const target: any = new Date(now.toDateString() + " " + targetTime);
+
+  if (target <= now) {
+    target.setDate(target.getDate() + 1);
+  }
+
+  const delay = target - now;
+
+  return new Promise((resolve) => setTimeout(resolve, delay));
 }
 
 const start = async () => {
@@ -37,7 +40,6 @@ const start = async () => {
         const browser = await chromium.launch({ headless: true });
         const context = await browser.newContext();
 
-        // Добавляем cookies
         await context.addCookies([
           {
             name: "sessionid",
@@ -74,14 +76,8 @@ const start = async () => {
         const data = req.body;
         const price = data?.price;
         const direct = data?.direct;
+        const time = getRandomTime();
 
-        const now = new Date();
-        const dayOfWeek = now.getDay();
-        const hour = now.getHours();
-        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
-        const isWithinTimeFrame = hour >= 6 && hour <= 22;
-
-        // && isWeekday && isWithinTimeFrame
         if (price && direct) {
           const file = await tg.uploadFile({ file: "./screen.png" });
           await tg.sendMedia(-1002301555153, {
@@ -94,9 +90,86 @@ const start = async () => {
               direct === "UP" ? "5963103826075456248" : "6039802767931871481"
             }">${direct === "UP" ? "⬆️" : "✅"}</emoji><br />
             <emoji id="5776356023820358695">✅</emoji> Цена актива: ${price}<br />
-            <emoji id="5983150113483134607">✅</emoji> Сделку открываем на ${getRandomMinute()}</strong
+            <emoji id="5983150113483134607">✅</emoji> Сделку открываем до ${time}</strong
           ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а также индикаторами технического анализа`,
           });
+
+          await waitForTime(time);
+
+          const cryptPrice = await axios.get(
+            "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
+          );
+          const { USD } = cryptPrice.data;
+
+          if (direct === "UP") {
+            if (price > USD) {
+              await tg.sendText(
+                -1002301555153,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            } else {
+              await tg.sendText(
+                -1002301555153,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            }
+          } else if (direct === "DOWN") {
+            if (price < USD) {
+              await tg.sendText(
+                -1002301555153,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            } else {
+              await tg.sendText(
+                -1002301555153,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            }
+          }
         }
         res.send("OK");
       } catch (error) {
@@ -105,8 +178,8 @@ const start = async () => {
       }
     });
 
-    app.get("/", (req: any, res: any) => {
-      res.send("rrr WORKING");
+    app.get("/", (_: any, res: any) => {
+      res.send("BOT WORKING");
     });
 
     console.log("Logged in as", user.username);
