@@ -5,12 +5,18 @@ import * as env from "./env.js";
 import { chromium } from "playwright";
 import { processImage } from "./jimp.util.js";
 import axios from "axios";
+import { createClient } from "redis";
 
 export const tg = new TelegramClient({
   apiId: env.API_ID,
   apiHash: env.API_HASH,
   storage: "bot-data/session",
 });
+
+const redisClient = createClient();
+
+redisClient.on("error", (err) => console.error("Redis client error", err));
+await redisClient.connect();
 
 function getRandomTime() {
   const currentTime = new Date();
@@ -25,19 +31,6 @@ function getRandomTime() {
   return `${hours}:${minutes}`;
 }
 
-function waitForTime(targetTime: any) {
-  const now: any = new Date();
-  const target: any = new Date(now.toDateString() + " " + targetTime);
-
-  if (target <= now) {
-    target.setDate(target.getDate() + 1);
-  }
-
-  const delay = target - now;
-
-  return new Promise((resolve) => setTimeout(resolve, delay));
-}
-
 const start = async () => {
   try {
     const app = express();
@@ -47,7 +40,7 @@ const start = async () => {
     app.use(express.urlencoded({ extended: true }));
     app.use(express.json());
 
-    app.post("/", async (req: any, res: any) => {
+    app.post("/", async (req, res) => {
       try {
         const browser = await chromium.launch({ headless: true });
         const context = await browser.newContext();
@@ -75,7 +68,7 @@ const start = async () => {
 
         await page.getByRole("button", { name: "Fullscreen mode" }).click();
         await page.waitForTimeout(1000);
-        await page.getByText("Accept all").click();
+        // await page.getByText("Accept all").click();
         await page.getByTitle("Hide indicators legend").click();
         await page.waitForTimeout(2000);
 
@@ -91,6 +84,12 @@ const start = async () => {
         const direct = data?.direct;
         const time = getRandomTime();
 
+        // Сохраняем данные в Redis
+        await redisClient.set(
+          `signal:${time}`,
+          JSON.stringify({ direct, price })
+        );
+
         const now = new Date();
         const dayOfWeek = now.getDay();
         const hour = now.getHours();
@@ -99,111 +98,103 @@ const start = async () => {
 
         if (price && direct && isWeekday && isWithinTimeFrame) {
           const file = await tg.uploadFile({ file: "./screen.png" });
-          //@ts-ignore
-          console.log(env.CANNEL_ID);
 
-          //@ts-ignore
           await tg.sendMedia(env.CANNEL_ID, {
             type: "photo",
             file: file,
             caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
-          <emoji id="5870921681735781843">✅</emoji> Сигнал:
-          <strong
-            >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
+            <emoji id="5870921681735781843">✅</emoji> Сигнал:
+            <strong
+              >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
               direct === "UP" ? "5963103826075456248" : "6039802767931871481"
             }">${direct === "UP" ? "⬆️" : "✅"}</emoji><br />
-            <emoji id="5776356023820358695">✅</emoji> Цена актива: ${price}<br />
-            <emoji id="5983150113483134607">✅</emoji> Сделку открываем до ${time}</strong
-          ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен при помощи искусственного интеллекта а также кластерным анализом `,
+              <emoji id="5776356023820358695">✅</emoji> Цена актива: ${price}<br />
+              <emoji id="5983150113483134607">✅</emoji> Сделку открываем до ${time}</strong
+            ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен при помощи искусственного интеллекта а также кластерным анализом`,
           });
-
-          res.send("OK");
-          await waitForTime(time);
-
-          const cryptPrice = await axios.get(
-            "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
-          );
-          const { USD } = cryptPrice.data;
-
-          if (direct === "UP") {
-            if (price > USD) {
-              await tg.sendText(
-                //@ts-ignore
-                env.CANNEL_ID,
-                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-                  EUR/USD<br />
-                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-                    >✅</emoji
-                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
-                    id="5938195768832692153"
-                    >✅</emoji
-                  >
-                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-                  также индикаторами технического анализа`
-              );
-            } else {
-              await tg.sendText(
-                //@ts-ignore
-                env.CANNEL_ID,
-                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-                  EUR/USD<br />
-                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-                    >✅</emoji
-                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
-                    id="5938195768832692153"
-                    >✅</emoji
-                  >
-                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-                  также индикаторами технического анализа`
-              );
-            }
-          } else if (direct === "DOWN") {
-            if (price < USD) {
-              await tg.sendText(
-                //@ts-ignore
-                env.CANNEL_ID,
-                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-                  EUR/USD<br />
-                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-                    >✅</emoji
-                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
-                    id="5938195768832692153"
-                    >✅</emoji
-                  >
-                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-                  также индикаторами технического анализа`
-              );
-            } else {
-              await tg.sendText(
-                //@ts-ignore
-                env.CANNEL_ID,
-                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-                  EUR/USD<br />
-                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-                    >✅</emoji
-                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
-                    id="5938195768832692153"
-                    >✅</emoji
-                  >
-                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-                  также индикаторами технического анализа`
-              );
-            }
-          }
         }
+        res.send("OK");
       } catch (error) {
         console.error(error);
         res.status(500).send("An error occurred while processing the request.");
       }
     });
+
+    // Проверяем сигналы по расписанию
+    setInterval(async () => {
+      const currentTime = new Date();
+
+      currentTime.setHours(currentTime.getHours() + 2);
+      currentTime.setMinutes(currentTime.getMinutes());
+
+      const hours = currentTime.getHours().toString().padStart(2, "0");
+      const minutes = currentTime.getMinutes().toString().padStart(2, "0");
+
+      const signal = await redisClient.get(`signal:${hours}:${minutes}`);
+      if (signal) {
+        const { direct, price } = JSON.parse(signal);
+        const cryptPrice = await axios.get(
+          "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
+        );
+        const { USD } = cryptPrice.data;
+
+        const resultImage =
+          direct === "UP"
+            ? USD > price
+              ? "./images/up.jpg"
+              : "./images/down.jpg"
+            : USD < price
+            ? "./images/up.jpg"
+            : "./images/down.jpg";
+
+        const emojiId =
+          direct === "UP"
+            ? USD > price
+              ? "5980930633298350051"
+              : "5980953710157632545"
+            : USD < price
+            ? "5980930633298350051"
+            : "5980953710157632545";
+
+        const emoji =
+          direct === "UP"
+            ? USD > price
+              ? "✅"
+              : "❌"
+            : USD < price
+            ? "✅"
+            : "❌";
+
+        const status =
+          direct === "UP"
+            ? USD > price
+              ? "ПРОФИТ"
+              : "УБЫТОК"
+            : USD < price
+            ? "ПРОФИТ"
+            : "УБЫТОК";
+
+        const fileResult = await tg.uploadFile({ file: resultImage });
+
+        await tg.sendMedia(env.CANNEL_ID, {
+          type: "photo",
+          file: fileResult,
+          caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+            EUR/USD<br />
+            <emoji id="5954226188804164973">✅</emoji> Цена открытия: ${price}
+            <br />
+            <emoji id="5954226188804164973">✅</emoji> Цена закрытия: ${USD}<br />
+            <br />
+            <emoji id=${emojiId}>${emoji}</emoji>
+            Результат прогноза: ${status}<br />
+            <br />
+            <emoji id="5938195768832692153">✅</emoji> Анализ проведен при
+            помощи искусственного интеллекта а также кластерным анализом`,
+        });
+
+        await redisClient.del(`signal:${hours}:${minutes}`);
+      }
+    }, 45000); // Проверяем каждую минуту
 
     app.get("/", (_: any, res: any) => {
       res.send("BOT WORKING");
