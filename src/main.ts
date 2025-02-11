@@ -4,7 +4,6 @@ import cors from "cors";
 import * as env from "./env.js";
 import { chromium } from "playwright";
 import { processImage } from "./jimp.util.js";
-import { getRandomTime } from "./utils.js";
 import axios from "axios";
 
 export const tg = new TelegramClient({
@@ -12,6 +11,19 @@ export const tg = new TelegramClient({
   apiHash: env.API_HASH,
   storage: "bot-data/session",
 });
+
+function getRandomTime() {
+  const currentTime = new Date();
+  const randomMinutes = Math.floor(Math.random() * 5) + 2;
+
+  currentTime.setHours(currentTime.getHours() + 2);
+  currentTime.setMinutes(currentTime.getMinutes() + randomMinutes);
+
+  const hours = currentTime.getHours().toString().padStart(2, "0");
+  const minutes = currentTime.getMinutes().toString().padStart(2, "0");
+
+  return `${hours}:${minutes}`;
+}
 
 function waitForTime(targetTime: any) {
   const now: any = new Date();
@@ -79,9 +91,19 @@ const start = async () => {
         const direct = data?.direct;
         const time = getRandomTime();
 
-        if (price && direct) {
+        const now = new Date();
+        const dayOfWeek = now.getDay();
+        const hour = now.getHours();
+        const isWeekday = dayOfWeek >= 1 && dayOfWeek <= 5;
+        const isWithinTimeFrame = hour >= 6 && hour <= 22;
+
+        if (price && direct && isWeekday && isWithinTimeFrame) {
           const file = await tg.uploadFile({ file: "./screen.png" });
-          await tg.sendMedia(-1002301555153, {
+          //@ts-ignore
+          console.log(env.CANNEL_ID);
+
+          //@ts-ignore
+          await tg.sendMedia(env.CANNEL_ID, {
             type: "photo",
             file: file,
             caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
@@ -95,85 +117,88 @@ const start = async () => {
           ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен при помощи искусственного интеллекта а также кластерным анализом `,
           });
 
-          //   await waitForTime(time);
+          res.send("OK");
+          await waitForTime(time);
 
-          //   const cryptPrice = await axios.get(
-          //     "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
-          //   );
-          //   const { USD } = cryptPrice.data;
+          const cryptPrice = await axios.get(
+            "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
+          );
+          const { USD } = cryptPrice.data;
 
-          //   if (direct === "UP") {
-          //     if (price > USD) {
-          //       await tg.sendText(
-          //         -1002301555153,
-          //         html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-          //           EUR/USD<br />
-          //           <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-          //           ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-          //           закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-          //             >✅</emoji
-          //           >Результат прогноза: ПРОФИТ<br /><br /><emoji
-          //             id="5938195768832692153"
-          //             >✅</emoji
-          //           >
-          //           Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-          //           также индикаторами технического анализа`
-          //       );
-          //     } else {
-          //       await tg.sendText(
-          //         -1002301555153,
-          //         html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-          //           EUR/USD<br />
-          //           <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-          //           ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-          //           закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-          //             >✅</emoji
-          //           >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
-          //             id="5938195768832692153"
-          //             >✅</emoji
-          //           >
-          //           Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-          //           также индикаторами технического анализа`
-          //       );
-          //     }
-          //   } else if (direct === "DOWN") {
-          //     if (price < USD) {
-          //       await tg.sendText(
-          //         -1002301555153,
-          //         html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-          //           EUR/USD<br />
-          //           <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-          //           ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-          //           закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-          //             >✅</emoji
-          //           >Результат прогноза: ПРОФИТ<br /><br /><emoji
-          //             id="5938195768832692153"
-          //             >✅</emoji
-          //           >
-          //           Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-          //           также индикаторами технического анализа`
-          //       );
-          //     } else {
-          //       await tg.sendText(
-          //         -1002301555153,
-          //         html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-          //           EUR/USD<br />
-          //           <emoji id="5954226188804164973">✅</emoji>Цена открытия:
-          //           ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
-          //           закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
-          //             >✅</emoji
-          //           >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
-          //             id="5938195768832692153"
-          //             >✅</emoji
-          //           >
-          //           Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
-          //           также индикаторами технического анализа`
-          //       );
-          //     }
-          //   }
-          // }
+          if (direct === "UP") {
+            if (price > USD) {
+              await tg.sendText(
+                //@ts-ignore
+                env.CANNEL_ID,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            } else {
+              await tg.sendText(
+                //@ts-ignore
+                env.CANNEL_ID,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            }
+          } else if (direct === "DOWN") {
+            if (price < USD) {
+              await tg.sendText(
+                //@ts-ignore
+                env.CANNEL_ID,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: ПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            } else {
+              await tg.sendText(
+                //@ts-ignore
+                env.CANNEL_ID,
+                html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
+                  EUR/USD<br />
+                  <emoji id="5954226188804164973">✅</emoji>Цена открытия:
+                  ${price} <br /><emoji id="5954226188804164973">✅</emoji>Цена
+                  закрытия: ${USD}<br /><br /><emoji id="5980930633298350051"
+                    >✅</emoji
+                  >Результат прогноза: НЕПРОФИТ<br /><br /><emoji
+                    id="5938195768832692153"
+                    >✅</emoji
+                  >
+                  Анализ проведен с помощью GPT TRADE AI 5.0,RT TRADE AI 2.0 а
+                  также индикаторами технического анализа`
+              );
+            }
+          }
         }
-        res.send("OK");
       } catch (error) {
         console.error(error);
         res.status(500).send("An error occurred while processing the request.");
