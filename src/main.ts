@@ -42,43 +42,6 @@ const start = async () => {
 
     app.post("/", async (req, res) => {
       try {
-        const browser = await chromium.launch({ headless: true });
-        const context = await browser.newContext();
-
-        await context.addCookies([
-          {
-            name: "sessionid",
-            value: "k0xeo0fhdvg6vhinechfq884rfy59yto",
-            domain: ".tradingview.com",
-            path: "/",
-          },
-          {
-            name: "sessionid_sign",
-            value: "v3:egBZYK6lKg3FYDL7CDsgoRvqHoM4ydpIJGXnLlUrKdE=",
-            domain: ".tradingview.com",
-            path: "/",
-          },
-        ]);
-
-        const page = await context.newPage();
-
-        await page.goto("https://www.tradingview.com/chart/Sop2oITN", {
-          timeout: 60000,
-        });
-
-        await page.getByRole("button", { name: "Fullscreen mode" }).click();
-        await page.waitForTimeout(1000);
-        // await page.getByText("Accept all").click();
-        await page.getByTitle("Hide indicators legend").click();
-        await page.waitForTimeout(2000);
-
-        await page.screenshot({
-          path: "screen.png",
-          fullPage: true,
-        });
-        await processImage();
-
-        await browser.close();
         const data = req.body;
         const price = data?.price;
         const direct = data?.direct;
@@ -91,6 +54,44 @@ const start = async () => {
         const isWithinTimeFrame = hour >= 6 && hour <= 22;
 
         if (price && direct && isWeekday && isWithinTimeFrame) {
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext();
+
+          await context.addCookies([
+            {
+              name: "sessionid",
+              value: "k0xeo0fhdvg6vhinechfq884rfy59yto",
+              domain: ".tradingview.com",
+              path: "/",
+            },
+            {
+              name: "sessionid_sign",
+              value: "v3:egBZYK6lKg3FYDL7CDsgoRvqHoM4ydpIJGXnLlUrKdE=",
+              domain: ".tradingview.com",
+              path: "/",
+            },
+          ]);
+
+          const page = await context.newPage();
+
+          await page.goto("https://www.tradingview.com/chart/Sop2oITN", {
+            timeout: 60000,
+          });
+
+          await page.getByRole("button", { name: "Fullscreen mode" }).click();
+          await page.waitForTimeout(1000);
+          // await page.getByText("Accept all").click();
+          await page.getByTitle("Hide indicators legend").click();
+          await page.waitForTimeout(2000);
+
+          await page.screenshot({
+            path: "screen.png",
+            fullPage: true,
+          });
+          await processImage();
+
+          await browser.close();
+
           const file = await tg.uploadFile({ file: "./screen.png" });
 
           await tg.sendMedia(env.CANNEL_ID, {
@@ -106,12 +107,12 @@ const start = async () => {
               <emoji id="5983150113483134607">✅</emoji> Сделку открываем до ${time}</strong
             ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен при помощи искусственного интеллекта а также кластерным анализом`,
           });
+          // Сохраняем данные в Redis
+          await redisClient.set(
+            `signal:${time}`,
+            JSON.stringify({ direct, price })
+          );
         }
-        // Сохраняем данные в Redis
-        await redisClient.set(
-          `signal:${time}`,
-          JSON.stringify({ direct, price })
-        );
         res.send("OK");
       } catch (error) {
         console.error(error);
