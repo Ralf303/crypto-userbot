@@ -84,12 +84,6 @@ const start = async () => {
         const direct = data?.direct;
         const time = getRandomTime();
 
-        // Сохраняем данные в Redis
-        await redisClient.set(
-          `signal:${time}`,
-          JSON.stringify({ direct, price })
-        );
-
         const now = new Date();
         const dayOfWeek = now.getDay();
         const hour = now.getHours();
@@ -105,7 +99,7 @@ const start = async () => {
             caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
             <emoji id="5870921681735781843">✅</emoji> Сигнал:
             <strong
-              >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
+            >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
               direct === "UP" ? "5963103826075456248" : "6039802767931871481"
             }">${direct === "UP" ? "⬆️" : "✅"}</emoji><br />
               <emoji id="5776356023820358695">✅</emoji> Цена актива: ${price}<br />
@@ -113,6 +107,11 @@ const start = async () => {
             ><br /><br /><emoji id="5938195768832692153">✅</emoji> Анализ проведен при помощи искусственного интеллекта а также кластерным анализом`,
           });
         }
+        // Сохраняем данные в Redis
+        await redisClient.set(
+          `signal:${time}`,
+          JSON.stringify({ direct, price })
+        );
         res.send("OK");
       } catch (error) {
         console.error(error);
