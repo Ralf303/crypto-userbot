@@ -45,8 +45,15 @@ const start = async () => {
         const data = req.body;
         const price = data?.price;
         const direct = data?.direct;
-        const time = getRandomTime();
+        const pare = data?.pare;
 
+        if (!price || !direct || !pare) {
+          res.status(200).send("Invalid data");
+          return;
+        }
+        res.send("OK");
+
+        const time = getRandomTime();
         const now = new Date();
         const dayOfWeek = now.getDay();
         const hour = now.getHours();
@@ -74,13 +81,23 @@ const start = async () => {
 
           const page = await context.newPage();
 
+          console.log("Регаемся");
+
           await page.goto("https://www.tradingview.com/chart/Sop2oITN", {
             timeout: 60000,
           });
+          console.log("Регнулись");
+
+          await page.getByRole("button", { name: "Change symbol" }).click();
+          await page.waitForTimeout(1000);
+          await page.getByPlaceholder("Search").fill(pare);
+          await page.waitForTimeout(4000);
+          await page.getByTitle("FXCM").click();
+          await page.waitForTimeout(2000);
 
           await page.getByRole("button", { name: "Fullscreen mode" }).click();
           await page.waitForTimeout(1000);
-          // await page.getByText("Accept all").click();
+          await page.getByText("Accept all").click();
           await page.getByTitle("Hide indicators legend").click();
           await page.waitForTimeout(2000);
 
@@ -89,15 +106,16 @@ const start = async () => {
             fullPage: true,
           });
           await processImage();
-
-          await browser.close();
+          console.log("Скриншот");
 
           const file = await tg.uploadFile({ file: "./screen.png" });
 
           await tg.sendMedia(env.CANNEL_ID, {
             type: "photo",
             file: file,
-            caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: EUR/USD<br />
+            caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара: ${
+              pare.substring(0, 3) + "/" + pare.substring(3)
+            }<br />
             <emoji id="5870921681735781843">✅</emoji> Сигнал:
             <strong
             >${direct === "UP" ? "ВВЕРХ" : "ВНИЗ"}</strong><emoji id="${
@@ -110,10 +128,12 @@ const start = async () => {
           // Сохраняем данные в Redis
           await redisClient.set(
             `signal:${time}`,
-            JSON.stringify({ direct, price })
+            JSON.stringify({ direct, price, pare })
           );
+          await browser.close();
         }
-        res.send("OK");
+
+        return;
       } catch (error) {
         console.error(error);
         res.status(500).send("An error occurred while processing the request.");
@@ -132,45 +152,46 @@ const start = async () => {
 
       const signal = await redisClient.get(`signal:${hours}:${minutes}`);
       if (signal) {
-        const { direct, price } = JSON.parse(signal);
+        const { direct, price, pare } = JSON.parse(signal);
         const cryptPrice = await axios.get(
-          "https://min-api.cryptocompare.com/data/price?fsym=EUR&tsyms=USD"
+          `https://quotes.instaforex.com/api/quotesTick?q=${pare}`
         );
-        const { USD } = cryptPrice.data;
+
+        const { ask } = cryptPrice.data[0];
 
         const resultImage =
           direct === "UP"
-            ? USD > price
+            ? ask > price
               ? "./images/up.jpg"
               : "./images/down.jpg"
-            : USD < price
+            : ask < price
             ? "./images/up.jpg"
             : "./images/down.jpg";
 
         const emojiId =
           direct === "UP"
-            ? USD > price
-              ? "5980930633298350051"
-              : "5980953710157632545"
-            : USD < price
-            ? "5980930633298350051"
-            : "5980953710157632545";
+            ? ask > price
+              ? "5427009714745517609"
+              : "5465665476971471368"
+            : ask < price
+            ? "5427009714745517609"
+            : "5465665476971471368";
 
         const emoji =
           direct === "UP"
-            ? USD > price
+            ? ask > price
               ? "✅"
               : "❌"
-            : USD < price
+            : ask < price
             ? "✅"
             : "❌";
 
         const status =
           direct === "UP"
-            ? USD > price
+            ? ask > price
               ? "ПРОФИТ"
               : "УБЫТОК"
-            : USD < price
+            : ask < price
             ? "ПРОФИТ"
             : "УБЫТОК";
 
@@ -180,10 +201,10 @@ const start = async () => {
           type: "photo",
           file: fileResult,
           caption: html`<emoji id="5812150667812280629">✅</emoji> Валютна пара:
-            EUR/USD<br />
+            ${pare.substring(0, 3) + "/" + pare.substring(3)}<br />
             <emoji id="5954226188804164973">✅</emoji> Цена открытия: ${price}
             <br />
-            <emoji id="5954226188804164973">✅</emoji> Цена закрытия: ${USD}<br />
+            <emoji id="5954226188804164973">✅</emoji> Цена закрытия: ${ask}<br />
             <br />
             <emoji id=${emojiId}>${emoji}</emoji>
             Результат прогноза: ${status}<br />
