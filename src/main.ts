@@ -98,7 +98,7 @@ const start = async () => {
           await page.getByRole("button", { name: "Fullscreen mode" }).click();
           await page.waitForTimeout(1000);
           await page.getByText("Accept all").click();
-          await page.getByTitle("Hide indicators legend").click();
+          // await page.getByTitle("Hide indicators legend").click();
           await page.waitForTimeout(2000);
 
           await page.screenshot({
